@@ -23,7 +23,7 @@ public class PredictModel {
                 .format("csv")
                 .option("header", "true")
                 .option("inferSchema", "true")
-                .option("delimiter", ",")  // ✅ Comma delimiter
+                .option("delimiter", ",")  
                 .load(validationPath);
 
         String labelCol = "quality";
@@ -32,7 +32,7 @@ public class PredictModel {
                 .filter(c -> !c.equals(labelCol))
                 .toArray(String[]::new);
 
-        // Cast all feature columns and label column to DoubleType
+        // next line will cast all feature columns and label column to DoubleType
         for (String colName : featureCols) {
             validationData = validationData.withColumn(colName, validationData.col(colName).cast("double"));
         }
