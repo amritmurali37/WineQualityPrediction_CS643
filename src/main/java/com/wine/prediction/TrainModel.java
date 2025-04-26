@@ -26,7 +26,7 @@ public class TrainModel {
                 .format("csv")
                 .option("header", "true")
                 .option("inferSchema", "true")
-                .option("delimiter", ",")  // ✅ Comma delimiter
+                .option("delimiter", ",")  //
                 .load(trainingPath);
 
         String labelCol = "quality";
@@ -35,7 +35,7 @@ public class TrainModel {
                 .filter(c -> !c.equals(labelCol))
                 .toArray(String[]::new);
 
-        // Cast all feature columns and label column to DoubleType
+        // next line will cast all feature columns and label column to DoubleType
         for (String colName : featureCols) {
             trainingData = trainingData.withColumn(colName, trainingData.col(colName).cast("double"));
         }
