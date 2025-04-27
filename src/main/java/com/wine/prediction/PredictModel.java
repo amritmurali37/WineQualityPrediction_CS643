@@ -7,9 +7,8 @@ import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 
 import java.io.PrintWriter;
-import java.io.File;
 import java.io.FileWriter;
-import java.nio.file.Paths;
+import java.io.File;
 
 public class PredictModel {
     public static void main(String[] args) throws Exception {
@@ -55,13 +54,12 @@ public class PredictModel {
 
         System.out.println("F1 Score = " + f1);
 
-
-        String localPath = "/home/hadoop/F1_Score.txt";
+        String localPath = "/tmp/F1_Score.txt";
         try (PrintWriter out = new PrintWriter(new FileWriter(localPath))) {
             out.println("F1 Score = " + f1);
         }
 
-      
+        // Upload to S3
         String bucketName = "bucketforassigntwo";
         String s3Path = "s3://" + bucketName + "/F1_Score.txt";
 
