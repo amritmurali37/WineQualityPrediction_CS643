@@ -6,6 +6,11 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 
+import java.io.PrintWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.nio.file.Paths;
+
 public class PredictModel {
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
@@ -23,7 +28,7 @@ public class PredictModel {
                 .format("csv")
                 .option("header", "true")
                 .option("inferSchema", "true")
-                .option("delimiter", ",")  
+                .option("delimiter", ",")
                 .load(validationPath);
 
         String labelCol = "quality";
@@ -32,7 +37,6 @@ public class PredictModel {
                 .filter(c -> !c.equals(labelCol))
                 .toArray(String[]::new);
 
-        // next line will cast all feature columns and label column to DoubleType
         for (String colName : featureCols) {
             validationData = validationData.withColumn(colName, validationData.col(colName).cast("double"));
         }
@@ -50,6 +54,22 @@ public class PredictModel {
         double f1 = evaluator.evaluate(predictions);
 
         System.out.println("F1 Score = " + f1);
+
+
+        String localPath = "/home/hadoop/F1_Score.txt";
+        try (PrintWriter out = new PrintWriter(new FileWriter(localPath))) {
+            out.println("F1 Score = " + f1);
+        }
+
+      
+        String bucketName = "bucketforassigntwo";
+        String s3Path = "s3://" + bucketName + "/F1_Score.txt";
+
+        Process upload = Runtime.getRuntime().exec(
+                new String[]{"bash", "-c", "aws s3 cp " + localPath + " " + s3Path}
+        );
+
+        upload.waitFor(); 
 
         spark.stop();
     }
