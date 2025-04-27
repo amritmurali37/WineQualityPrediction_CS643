@@ -5,15 +5,12 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.classification.LogisticRegression;
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.Pipeline;
 import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.PipelineModel;
-import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 
-import java.io.PrintWriter;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
+import java.io.FileWriter;
 
 public class TrainModel {
     public static void main(String[] args) throws Exception {
@@ -41,7 +38,6 @@ public class TrainModel {
                 .filter(c -> !c.equals(labelCol))
                 .toArray(String[]::new);
 
-        // Cast feature columns and label column to DoubleType
         for (String colName : featureCols) {
             trainingData = trainingData.withColumn(colName, trainingData.col(colName).cast("double"));
         }
@@ -61,10 +57,10 @@ public class TrainModel {
 
         PipelineModel model = pipeline.fit(trainingData);
 
-        // Save the model
-        model.save("wine_model");
+        // Save model
+        model.write().overwrite().save("wine_model");
 
-        // Evaluate the model
+        // Evaluate model
         Dataset<Row> predictions = model.transform(trainingData);
 
         MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()
@@ -72,15 +68,14 @@ public class TrainModel {
                 .setPredictionCol("prediction")
                 .setMetricName("f1");
 
-        double f1Score = evaluator.evaluate(predictions);
-        System.out.println("F1 Score = " + f1Score);
+        double f1 = evaluator.evaluate(predictions);
 
-        // Write F1 Score to a text file
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream("/home/hadoop/F1_Score.txt"), StandardCharsets.UTF_8))) {
-            writer.println("F1 Score = " + f1Score);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        System.out.println("F1 Score = " + f1);
+
+        // Write F1 score to a text file
+        FileWriter writer = new FileWriter("/home/hadoop/F1_Score.txt");
+        writer.write("F1 Score = " + f1);
+        writer.close();
 
         spark.stop();
     }
