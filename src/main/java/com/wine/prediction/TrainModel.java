@@ -9,8 +9,13 @@ import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.Pipeline;
 import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.PipelineModel;
+import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.FileWriter;
+import java.nio.file.Paths;
 
 public class TrainModel {
     public static void main(String[] args) throws Exception {
@@ -20,7 +25,8 @@ public class TrainModel {
         }
 
         String trainingPath = args[0];
-
+        String s3BucketName = "bucketforassigntwo";  // bucket created for outputs
+        String s3Key = "F1_Score.txt";               // outputs the f1 - score
         SparkSession spark = SparkSession.builder()
                 .appName("WineQualityTraining")
                 .getOrCreate();
@@ -57,25 +63,35 @@ public class TrainModel {
 
         PipelineModel model = pipeline.fit(trainingData);
 
-        // Save model
         model.write().overwrite().save("wine_model");
 
-        // Evaluate model
+   
         Dataset<Row> predictions = model.transform(trainingData);
-
         MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()
                 .setLabelCol(labelCol)
                 .setPredictionCol("prediction")
                 .setMetricName("f1");
 
-        double f1 = evaluator.evaluate(predictions);
+        double f1Score = evaluator.evaluate(predictions);
+        
+        // Save to local file
+        FileWriter fw = new FileWriter("/tmp/F1_Score.txt");
+        fw.write("F1 Score: " + f1Score);
+        fw.close();
 
-        System.out.println("F1 Score = " + f1);
+        // Upload to S3
+        S3Client s3 = S3Client.builder()
+                .region(Region.US_EAST_1)
+                .credentialsProvider(InstanceProfileCredentialsProvider.create())
+                .build();
 
-        // Write F1 score to a text file
-        FileWriter writer = new FileWriter("/home/hadoop/F1_Score.txt");
-        writer.write("F1 Score = " + f1);
-        writer.close();
+        s3.putObject(PutObjectRequest.builder()
+                        .bucket(s3BucketName)
+                        .key(s3Key)
+                        .build(),
+                Paths.get("/tmp/F1_Score.txt"));
+
+        System.out.println("F1 Score uploaded to S3!");
 
         spark.stop();
     }
